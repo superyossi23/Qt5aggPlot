@@ -9,6 +9,7 @@
 #
 # WEBSITE: www.pyshine.com
 
+import os
 from PyQt5 import QtCore, QtGui, QtWidgets
 import matplotlib
 import matplotlib.pyplot as plt
@@ -18,7 +19,6 @@ from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import QFileDialog
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT as Navi
 from matplotlib.figure import Figure
-import seaborn as sns
 import pandas as pd
 import sip  # can be installed : pip install sip
 
@@ -45,12 +45,14 @@ class MatplotlibCanvas(FigureCanvasQTAgg):
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1440, 1000)
+        MainWindow.resize(800, 800)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
+        self.centralwidget.setMaximumSize(QtCore.QSize(1920, 1080))
         self.centralwidget.setObjectName("centralwidget")
         self.gridLayout = QtWidgets.QGridLayout(self.centralwidget)
         self.gridLayout.setObjectName("gridLayout")
         self.horizontalLayout = QtWidgets.QHBoxLayout()
+        self.horizontalLayout.setSizeConstraint(QtWidgets.QLayout.SetDefaultConstraint)
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.label = QtWidgets.QLabel(self.centralwidget)
         self.label.setObjectName("label")
@@ -65,17 +67,18 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addItem(spacerItem)
         self.gridLayout.addLayout(self.horizontalLayout, 0, 0, 1, 1)
         self.verticalLayout = QtWidgets.QVBoxLayout()
+        self.verticalLayout.setSizeConstraint(QtWidgets.QLayout.SetDefaultConstraint)
+        self.verticalLayout.setSpacing(0)
         self.verticalLayout.setObjectName("verticalLayout")
         self.spacerItem1 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         self.verticalLayout.addItem(self.spacerItem1)
         self.gridLayout.addLayout(self.verticalLayout, 1, 0, 1, 1)
-
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 22))
         self.menubar.setObjectName("menubar")
-        self.menuFile = QtWidgets.QMenu(self.menubar)
-        self.menuFile.setObjectName("menuFile")
+        self.menuFIle = QtWidgets.QMenu(self.menubar)
+        self.menuFIle.setObjectName("menuFIle")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
@@ -84,9 +87,9 @@ class Ui_MainWindow(object):
         self.actionOpen_csv_file.setObjectName("actionOpen_csv_file")
         self.actionExit = QtWidgets.QAction(MainWindow)
         self.actionExit.setObjectName("actionExit")
-        self.menuFile.addAction(self.actionOpen_csv_file)
-        self.menuFile.addAction(self.actionExit)
-        self.menubar.addAction(self.menuFile.menuAction())
+        self.menuFIle.addAction(self.actionOpen_csv_file)
+        self.menuFIle.addAction(self.actionExit)
+        self.menubar.addAction(self.menuFIle.menuAction())
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
@@ -103,12 +106,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout.addWidget(self.toolbar)
 
         self.themes = ['bmh', 'classic', 'dark_background', 'fast',
-                       'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-bright',
-                       'seaborn-colorblind', 'seaborn-dark-palette', 'seaborn-dark',
-                       'seaborn-darkgrid', 'seaborn-deep', 'seaborn-muted', 'seaborn-notebook',
-                       'seaborn-paper', 'seaborn-pastel', 'seaborn-poster', 'seaborn-talk',
-                       'seaborn-ticks', 'seaborn-white', 'seaborn-whitegrid', 'seaborn',
-                       'Solarize_Light2', 'tableau-colorblind10']
+                       'fivethirtyeight', 'ggplot', 'grayscale', 'Solarize_Light2', 'tableau-colorblind10']
 
         self.comboBox.addItems(self.themes)
 
@@ -118,7 +116,7 @@ class Ui_MainWindow(object):
         self.actionOpen_csv_file.triggered.connect(self.getFile)
 
     def Update(self, value):
-        print("Value from Combo Box:", value)
+        print("Theme selected:", value)
         plt.clf()
         plt.style.use(value)
         try:
@@ -153,27 +151,35 @@ class Ui_MainWindow(object):
         """ This function will get the address of the csv file location
             also calls a readData function
         """
-        self.filename = QFileDialog.getOpenFileName(filter="csv (*.csv)")[0]
-        print("File :", self.filename)
-        self.readData()
+        try:
+            self.filename = QFileDialog.getOpenFileName(filter="csv (*.csv)")[0]
+            print("File :", self.filename)
+            self.readData()
+        except Exception as e:
+            print(e)
+            pass
 
     def readData(self):
         """ This function will read the data using pandas and call the update
             function to plot
         """
-        import os
-        base_name = os.path.basename(self.filename)
-        self.Title = os.path.splitext(base_name)[0]
-        print('FILE', self.Title)
-        self.df = pd.read_csv(self.filename, encoding='utf-8').fillna(0)
-        self.Update(self.themes[0])  # lets 0th theme be the default : bmh
+        try:
+            base_name = os.path.basename(self.filename)
+            self.Title = os.path.splitext(base_name)[0]
+            print('FILE', self.Title)
+            self.df = pd.read_csv(self.filename, encoding='utf-8').fillna(0)
+            self.df.set_index(self.df.columns[0], inplace=True)
+            self.Update(self.themes[0])  # lets 0th theme be the default : bmh
+        except Exception as e:
+            print(e)
+            pass
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "PyShine simple plot"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "PyShine csv plot"))
         self.label.setText(_translate("MainWindow", "Select Theme"))
         self.pushButton.setText(_translate("MainWindow", "Open"))
-        self.menuFile.setTitle(_translate("MainWindow", "File"))
+        self.menuFIle.setTitle(_translate("MainWindow", "File"))
         self.actionOpen_csv_file.setText(_translate("MainWindow", "Open csv file"))
         self.actionExit.setText(_translate("MainWindow", "Exit"))
 
