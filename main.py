@@ -14,6 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
+import configparser
 
 matplotlib.use('Qt5Agg')
 from PyQt5 import QtCore, QtWidgets
@@ -26,11 +27,29 @@ import pandas as pd
 import sip  # can be installed : pip install sip
 
 
+####################################
+# CONFIGURATION #
+####################################
+
+# Create a ConfigParser object
+config = configparser.ConfigParser()
+# Read the INI file
+config.read('./config.ini')
+
+header = int(config['read_csv'].get('header',  0))
+skiprows = int(config['read_csv'].get('skiprows',  24))
+index_col = int(config['read_csv'].get('index_col',  2))
+col_drop = [int(num.strip()) for num in config['read_csv'].get('col_drop',  None).split(',')] if 'col_drop' in config['read_csv'] else None
+row_drop = [int(num.strip()) for num in config['read_csv'].get('col_drop',  None).split(',')] if 'row_drop' in config['read_csv'] else None
+
 # Set the font to use
 font_path = fm.findfont(fm.FontProperties(family='SimSun'))  # make japanese readable
 plt.rcParams['font.family'] = fm.FontProperties(fname=font_path).get_name()
 
 
+####################################
+# GUI #
+####################################
 class MatplotlibCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None, dpi=120):
         fig = Figure(dpi=dpi)
@@ -45,7 +64,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.setAcceptDrops(True)
 
     #########################################################
-    # ⇓ Replace Ui_MainWindow from main_.py from main_.ui ⇓ #
+    # ⇓ Replace setupUI from main_.ui ⇓ #
     #########################################################
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
@@ -105,9 +124,9 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
-#########################################################
-# ⇑ Replace Ui_MainWindow from main_.py from main_.ui ⇑ #
-#########################################################
+    #########################################################
+    # ⇑ Replace setupUI from main_.ui ⇑ #
+    #########################################################
 
         self.filename = ''
         self.canv = MatplotlibCanvas(self)
@@ -163,7 +182,8 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             also calls a readData function
         """
         try:
-            self.filename = QFileDialog.getOpenFileName(filter="csv (*.csv)")[0]
+            # self.filename = QFileDialog.getOpenFileName(filter="csv (*.csv)")[0]
+            self.filename = QFileDialog.getOpenFileName()[0]
             print("File :", self.filename)
             self.readData()
         except Exception as e:
@@ -178,8 +198,15 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
             base_name = os.path.basename(self.filename)
             self.Title = os.path.splitext(base_name)[0]
             print('FILE', self.Title)
-            self.df = pd.read_csv(self.filename, encoding='utf-8').fillna(0)
-            self.df.set_index(self.df.columns[0], inplace=True)
+
+            if self.filename.split('.')[-1] == 'csv':
+                self.df = pd.read_csv(self.filename, skiprows=skiprows, header=header, encoding='SHIFT-JIS').fillna(0)
+            elif self.filename.split('.')[-1] == 'xls' or self.filename.split('.')[-1] == 'xlsx':
+                self.df = pd.read_excel(self.filename, skiprows=skiprows, header=header).fillna(0)
+
+            self.df.set_index(self.df.columns[index_col], inplace=True)
+            self.df = self.df.drop(self.df.columns[col_drop], axis=1)  # drop unwanted columns
+            self.df = self.df.drop(self.df.index[row_drop], axis=0)  # drop unwanted rows
             self.Update(self.themes[0])  # lets 0th theme be the default : bmh
         except Exception as e:
             print(e)
@@ -187,7 +214,7 @@ class Ui_MainWindow(QtWidgets.QMainWindow):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "PyShine csv plot"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "Qt5Agg plot"))
         self.label.setText(_translate("MainWindow", "Select Theme"))
         self.label_2.setText(_translate("MainWindow", "Input File"))
         self.pushButton.setText(_translate("MainWindow", "Open"))
